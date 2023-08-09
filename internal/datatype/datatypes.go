@@ -33,6 +33,9 @@ const (
 	Char       = idChar | metaString
 	Binary     = idBinary | metaBinary
 	Blob       = idBlob | metaBinary
+	TinyBlob   = idTinyBlob | metaBinary
+	MediumBlob = idMediumBlob | metaBinary
+	LongBlob   = idLogBlob | metaBinary
 	Enum       = idEnum | metaString | metaRequiresParams
 	Boolean    = idBoolean
 	Date       = idDate | metaTime
@@ -64,6 +67,9 @@ const (
 	longtext   = "LONGTEXT"
 	char       = "CHAR"
 	blob       = "BLOB"
+	tinyblob   = "TINYBLOB"
+	mediumblob = "MEDIUMBLOB"
+	longblob   = "LONGBLOB"
 	binary     = "BINARY"
 	enum       = "ENUM"
 	boolean    = "BOOLEAN" // yoyo considers "BOOLEAN" to be the canonical string, however
@@ -142,6 +148,12 @@ func (dt Datatype) String() (s string) {
 		s = char
 	case Blob:
 		s = blob
+	case TinyBlob:
+		s = tinyblob
+	case MediumBlob:
+		s = mediumblob
+	case LongBlob:
+		s = longblob
 	case Binary:
 		s = binary
 	case Enum:
@@ -178,7 +190,7 @@ func (dt Datatype) GoNullableTypeString() (s string) {
 		s = goNullableString
 	case Char:
 		s = goNullableByte
-	case Blob, Binary:
+	case Blob, Binary, TinyBlob, MediumBlob, LongBlob:
 		s = goBlob
 	case Boolean:
 		s = goNullableBool
@@ -206,7 +218,7 @@ func (dt Datatype) GoTypeString() (s string) {
 		s = goString
 	case Char:
 		s = goByte
-	case Blob, Binary:
+	case Blob, Binary, TinyBlob, MediumBlob, LongBlob:
 		s = goBlob
 	case Boolean:
 		s = goBool
@@ -296,6 +308,8 @@ func FromString(in string) (dt Datatype, err error) {
 		dt = Char
 	case blob:
 		dt = Blob
+	case tinyblob:
+		dt = TinyBlob
 	case enum:
 		dt = Enum
 	case boolean, sbool:
@@ -354,6 +368,9 @@ const (
 	idChar
 	idBinary
 	idBlob
+	idTinyBlob
+	idMediumBlob
+	idLogBlob
 	idEnum
 	idBoolean
 	idDate
