@@ -60,6 +60,8 @@ func NewEntityGenerator(packageName string, db schema.Database, packagePath Find
 			}
 		}
 
+		ps.Imports = sortedUnique(ps.Imports)
+
 		tpl := goTemplate.Must(goTemplate.New("EntityFile").Parse(template.EntityFile))
 
 		err = tpl.Execute(w, ps)
