@@ -142,6 +142,10 @@ func (a *adapter) generateColumn(cName string, c schema.Column) string {
 		}
 	}
 
+	if c.Collation != "" {
+		sb.WriteString(fmt.Sprintf(` COLLATE %s`, c.Collation))
+	}
+
 	if c.Default != nil {
 		sb.WriteString(` DEFAULT `)
 		if c.Datatype.IsString() {
