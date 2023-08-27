@@ -16,9 +16,9 @@ import (
 
 type Generator func(db schema.Database, repositoriesPath string) error
 type GeneratorLoader func(config yoyo.Config) Generator
-type WriteGenerator func(db schema.Database, w io.StringWriter) error
+type WriteGenerator func(db schema.Database, w io.Writer) error
 type SimpleWriteGenerator func(w io.StringWriter) error
-type EntityGenerator func(t schema.Table, w io.StringWriter) error
+type EntityGenerator func(t schema.Table, w io.Writer) error
 type FileOpener func(string) (*os.File, error)
 type Finder func(string) (string, error)
 
@@ -183,7 +183,7 @@ func InitGeneratorLoader(
 			NewEntityGenerator(packageName, config.Schema, findPackagePath, reposPath),
 			NewEntityRepositoryGenerator(packageName, adapter, reposPath, findPackagePath, config.Schema),
 			NewQueryFileGenerator(reposPath, findPackagePath, config.Schema),
-			NewRepositoriesGenerator(packageName, reposPath, findPackagePath, config.Schema),
+			NewRepositoriesGenerator(packageName),
 			NewQueryNodeGenerator(),
 			NewNullTypesFileGenerator(),
 			file.CreateWithDirs,

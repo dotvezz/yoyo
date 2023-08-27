@@ -3,24 +3,36 @@ package repository
 import (
 	"fmt"
 	"io"
-	"strings"
+	goTemplate "text/template"
 
 	"github.com/yoyo-project/yoyo/internal/repository/template"
 	"github.com/yoyo-project/yoyo/internal/schema"
 )
 
+type EntityFileParams struct {
+	EntityFields    []string
+	ScanFields      []string
+	Imports         []string
+	ReferenceFields []string
+	EntityName      string
+	PackageName     string
+}
+
 func NewEntityGenerator(packageName string, db schema.Database, packagePath Finder, reposPath string) EntityGenerator {
-	return func(t schema.Table, w io.StringWriter) error {
-		var fields, referenceFields, scanFields, imports []string
+	return func(t schema.Table, w io.Writer) error {
+		ps := EntityFileParams{
+			PackageName: packageName,
+			EntityName:  t.ExportedGoName(),
+		}
 		nullPackagePath, err := packagePath(reposPath + "/nullable")
 		if err != nil {
 			return fmt.Errorf("couldn't generate entity file: %w", err)
 		}
 		for _, c := range t.Columns {
-			fields = append(fields, fmt.Sprintf("%s %s", c.ExportedGoName(), c.GoTypeString()))
-			scanFields = append(scanFields, fmt.Sprintf("&e.%s", c.ExportedGoName()))
+			ps.EntityFields = append(ps.EntityFields, fmt.Sprintf("%s %s", c.ExportedGoName(), c.GoTypeString()))
+			ps.ScanFields = append(ps.ScanFields, fmt.Sprintf("&e.%s", c.ExportedGoName()))
 			if imp := c.RequiredImport(nullPackagePath); imp != "" {
-				imports = append(imports, imp)
+				ps.Imports = append(ps.Imports, imp)
 			}
 		}
 
@@ -31,8 +43,8 @@ func NewEntityGenerator(packageName string, db schema.Database, packagePath Find
 					c, _ := ft.GetColumn(cn)
 
 					goName := fmt.Sprintf("%s%s", ft.ExportedGoName(), c.ExportedGoName())
-					scanFields = append(scanFields, fmt.Sprintf("&e.%s", goName))
-					referenceFields = append(referenceFields, fmt.Sprintf("%s %s", goName, c.GoTypeString()))
+					ps.ScanFields = append(ps.ScanFields, fmt.Sprintf("&e.%s", goName))
+					ps.ReferenceFields = append(ps.ReferenceFields, fmt.Sprintf("%s %s", goName, c.GoTypeString()))
 				}
 			}
 		}
@@ -41,29 +53,17 @@ func NewEntityGenerator(packageName string, db schema.Database, packagePath Find
 			for _, r := range t2.References {
 				if r.HasMany && r.TableName == t.Name {
 					for _, c := range t2.PKColumns() {
-						scanFields = append(scanFields, fmt.Sprintf("&e.%s", t2.ExportedGoName()+c.ExportedGoName()))
-						referenceFields = append(referenceFields, fmt.Sprintf("%s %s", t2.ExportedGoName()+c.ExportedGoName(), c.GoTypeString()))
+						ps.ScanFields = append(ps.ScanFields, fmt.Sprintf("&e.%s", t2.ExportedGoName()+c.ExportedGoName()))
+						ps.ReferenceFields = append(ps.ReferenceFields, fmt.Sprintf("%s %s", t2.ExportedGoName()+c.ExportedGoName(), c.GoTypeString()))
 					}
 				}
 			}
 		}
 
-		r := strings.NewReplacer(
-			template.PackageName,
-			packageName,
-			template.EntityFields,
-			strings.Join(fields, "\n	"),
-			template.ScanFields,
-			strings.Join(scanFields, ", "),
-			template.Imports,
-			strings.Join(sortedUnique(imports), "\n	"),
-			template.EntityName,
-			t.ExportedGoName(),
-			template.ReferenceFields,
-			strings.Join(referenceFields, "\n	"),
-		)
+		tpl := goTemplate.Must(goTemplate.New("EntityFile").Parse(template.EntityFile))
 
-		_, err = w.WriteString(r.Replace(template.EntityFile))
+		err = tpl.Execute(w, ps)
+
 		return err
 	}
 }

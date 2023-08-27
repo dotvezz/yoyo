@@ -4,39 +4,68 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	goTemplate "text/template"
 
 	"github.com/yoyo-project/yoyo/internal/repository/template"
 	"github.com/yoyo-project/yoyo/internal/schema"
 )
 
+type RepositoryParams struct {
+	ExportedGoName   string
+	QueryPackageName string
+	Table            schema.Table
+
+	PackageName   string
+	PKNames       []string
+	InsertColumns []string
+	SelectColumns []string
+	ScanFields    []string
+	InFields      []string
+	PKFields      []string
+
+	QueryImportPath   string
+	ColumnAssignments []string
+
+	PKCapture string
+	PKQuery   string
+
+	StatementPlaceholders []string
+}
+
 func NewEntityRepositoryGenerator(packageName string, adapter Adapter, reposPath string, packagePath Finder, db schema.Database) EntityGenerator {
-	return func(t schema.Table, w io.StringWriter) (err error) {
-		var pkNames, insertCNames, selectCNames, scanFields, inFields, pkFields, colAssignments []string
+	return func(t schema.Table, w io.Writer) (err error) {
+		ps := RepositoryParams{
+			ExportedGoName:   t.ExportedGoName(),
+			QueryPackageName: t.QueryPackageName(),
+			Table:            t,
+			PackageName: packageName,
+		}
+
 		for _, col := range t.Columns {
 			if col.PrimaryKey {
-				pkFields = append(pkFields, strings.ReplaceAll(template.PKFieldTemplate, template.FieldName, col.ExportedGoName()))
-				pkNames = append(pkNames, col.Name)
+				ps.PKFields = append(ps.PKFields, strings.ReplaceAll(template.PKFieldTemplate, template.FieldName, col.ExportedGoName()))
+				ps.PKNames = append(ps.PKNames, col.Name)
 			}
 			if !col.AutoIncrement {
-				insertCNames = append(insertCNames, col.Name)
+				ps.InsertColumns = append(ps.InsertColumns, col.Name)
 			}
-			selectCNames = append(selectCNames, col.Name)
-			scanFields = append(scanFields, fmt.Sprintf("&ent.%s", col.ExportedGoName()))
-			inFields = append(inFields, fmt.Sprintf("in.%s", col.ExportedGoName()))
+			ps.SelectColumns = append(ps.SelectColumns, col.Name)
+			ps.ScanFields = append(ps.ScanFields, fmt.Sprintf("&ent.%s", col.ExportedGoName()))
+			ps.InFields = append(ps.InFields, fmt.Sprintf("in.%s", col.ExportedGoName()))
 		}
 
 		for _, r := range t.References {
 			if r.HasOne {
 				ft, _ := db.GetTable(r.TableName)
 				for _, cn := range r.ColNames(ft) {
-					selectCNames = append(selectCNames, cn)
-					insertCNames = append(insertCNames, cn)
+					ps.SelectColumns = append(ps.SelectColumns, cn)
+					ps.InsertColumns = append(ps.InsertColumns, cn)
 				}
 				for _, cn := range ft.PKColNames() {
 					c, _ := ft.GetColumn(cn)
 					goName := fmt.Sprintf("%s%s", ft.ExportedGoName(), c.ExportedGoName())
-					scanFields = append(scanFields, fmt.Sprintf("&ent.%s", goName))
-					inFields = append(inFields, fmt.Sprintf("in.%s", goName))
+					ps.ScanFields = append(ps.ScanFields, fmt.Sprintf("&ent.%s", goName))
+					ps.InFields = append(ps.InFields, fmt.Sprintf("in.%s", goName))
 				}
 			}
 		}
@@ -45,23 +74,21 @@ func NewEntityRepositoryGenerator(packageName string, adapter Adapter, reposPath
 			for _, r := range t2.References {
 				if r.HasMany && r.TableName == t.Name {
 					for _, col := range t2.PKColumns() {
-						selectCNames = append(selectCNames, col.Name)
-						insertCNames = append(insertCNames, col.Name)
-						scanFields = append(scanFields, fmt.Sprintf("&ent.%s", t2.ExportedGoName() + col.ExportedGoName()))
-						inFields = append(inFields, fmt.Sprintf("in.%s", col.ExportedGoName()))
+						ps.SelectColumns = append(ps.SelectColumns, col.Name)
+						ps.InsertColumns = append(ps.InsertColumns, col.Name)
+						ps.ScanFields = append(ps.ScanFields, fmt.Sprintf("&ent.%s", t2.ExportedGoName()+col.ExportedGoName()))
+						ps.InFields = append(ps.InFields, fmt.Sprintf("in.%s", col.ExportedGoName()))
 					}
 				}
 			}
 		}
 
-
-		var queryImportPath string
-		queryImportPath, err = packagePath(fmt.Sprintf("%s/query/%s", reposPath, t.QueryPackageName()))
+		ps.QueryImportPath, err = packagePath(fmt.Sprintf("%s/query/%s", reposPath, t.QueryPackageName()))
 		if err != nil {
 			return fmt.Errorf("unable to generate repository: %w", err)
 		}
 
-		var pkCapture, pkCapTemplate string
+		var pkCapTemplate string
 		pkReplacer := strings.NewReplacer()
 
 		switch len(t.PKColumns()) {
@@ -86,62 +113,33 @@ func NewEntityRepositoryGenerator(packageName string, adapter Adapter, reposPath
 			pkReplacer = strings.NewReplacer()
 		}
 
-		pkCapture = pkReplacer.Replace(pkCapTemplate)
+		ps.PKCapture = pkReplacer.Replace(pkCapTemplate)
 
 		pkQueryReplacer := strings.NewReplacer(
 			template.QueryPackageName,
 			t.QueryPackageName(),
 			template.PKFields,
-			strings.Join(pkFields, "\n		"),
+			strings.Join(ps.PKFields, "\n		"),
 		)
 
-		pkQuery := pkQueryReplacer.Replace(template.PKQueryTemplate)
+		ps.PKQuery = pkQueryReplacer.Replace(template.PKQueryTemplate)
 
-		preparedStatementPlaceholders := adapter.PreparedStatementPlaceholders(len(selectCNames))
-		for i, colName := range selectCNames {
-			colAssignments = append(colAssignments, fmt.Sprintf("%s = %s", colName, preparedStatementPlaceholders[i]))
+		ps.StatementPlaceholders = adapter.PreparedStatementPlaceholders(len(ps.SelectColumns))
+		for i, colName := range ps.SelectColumns {
+			ps.ColumnAssignments = append(ps.ColumnAssignments, fmt.Sprintf("%s = %s", colName, ps.StatementPlaceholders[i]))
 		}
 
-
-		var saveFuncs string
-
-		if len(t.PKColumns()) > 0 {
-			saveFuncs = template.SaveWithPK
-		} else {
-			saveFuncs = template.SaveWithoutPK
-		}
-
-		r := strings.NewReplacer(
-			template.PackageName,
-			packageName,
-			template.Imports,
-			fmt.Sprintf(`"%s"`, queryImportPath),
-			template.ScanFields,
-			strings.Join(scanFields, ", "),
-			template.InFields,
-			strings.Join(inFields, ", "),
-			template.EntityName,
-			t.ExportedGoName(),
-			template.TableName,
-			t.Name,
-			template.InsertColumnNames,
-			strings.Join(insertCNames, ", "),
-			template.SelectColumnNames,
-			strings.Join(selectCNames, ", "),
-			template.StatementPlaceholders,
-			strings.Join(preparedStatementPlaceholders, ", "),
-			template.PKCapture,
-			pkCapture,
-			template.PKQuery,
-			pkQuery,
-			template.ColumnAssignments,
-			strings.Join(colAssignments, ", "),
-			template.QueryPackageName,
-			t.QueryPackageName(),
+		tpl := goTemplate.Must(
+			goTemplate.New("RepositoryFile").
+				Funcs(goTemplate.FuncMap{"join": Join}).
+				Parse(template.RepositoryFile),
 		)
-
-		_, err = w.WriteString(r.Replace(strings.ReplaceAll(template.RepositoryFile, template.SaveFuncs, saveFuncs)))
+		err = tpl.Execute(w, ps)
 
 		return err
 	}
+}
+
+func Join(d string, ss []string) string {
+	return strings.Join(ss, d)
 }

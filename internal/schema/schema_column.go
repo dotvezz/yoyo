@@ -30,6 +30,15 @@ func (c *Column) GoTypeString() string {
 	return s
 }
 
+// BaseType works like GoTypeString but doesn't care about nullable types
+func (c *Column) BaseType() string {
+	s := c.Datatype.GoTypeString()
+	if c.Unsigned && c.Datatype.IsSignable() && c.Datatype.HasGoUnsigned() {
+		s = fmt.Sprintf("u%s", s)
+	}
+	return s
+}
+
 // RequiredImport returns any packages that need to be imported to support the Go type of a column in generated  Go code
 func (c *Column) RequiredImport(nullPath string) string {
 	if c.Datatype.IsTime() && !c.Nullable {
