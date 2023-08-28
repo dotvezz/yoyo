@@ -66,6 +66,20 @@ func (q Query) IdLessOrEqual(val uint32) Query {
 	}}
 }
 
+func (q Query) SomeBinary(val []byte) Query {
+	return Query{query.Node{
+		Children: &[2]query.Node{q.n, SomeBinary(val).n},
+		Operator: query.And,
+	}}
+}
+
+func (q Query) SomeBinaryNot(val []byte) Query {
+	return Query{query.Node{
+		Children: &[2]query.Node{q.n, SomeBinaryNot(val).n},
+		Operator: query.And,
+	}}
+}
+
 func (q Query) Name(val string) Query {
 	return Query{query.Node{
 		Children: &[2]query.Node{q.n, Name(val).n},
@@ -388,6 +402,26 @@ func IdLessOrEqual(val uint32) Query {
 		Condition: query.Condition{
 			Column:   "id",
 			Operator: query.LessOrEqual,
+			Value:    val,
+		},
+	}}
+}
+
+func SomeBinary(val []byte) Query {
+	return Query{query.Node{
+		Condition: query.Condition{
+			Column:   "someBinary",
+			Operator: query.Equals,
+			Value:    val,
+		},
+	}}
+}
+
+func SomeBinaryNot(val []byte) Query {
+	return Query{query.Node{
+		Condition: query.Condition{
+			Column:   "someBinary",
+			Operator: query.NotEquals,
 			Value:    val,
 		},
 	}}

@@ -5,6 +5,7 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"slices"
 )
 
 type TransactFunc func(func() error, ...TransactOptions) error
@@ -70,4 +71,8 @@ func initTransact(r *repository) TransactFunc {
 
 		return
 	}
+}
+
+func equal[S ~[]E, E comparable](a, b S) bool {
+	return slices.Equal(a, b)
 }

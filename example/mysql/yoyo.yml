@@ -26,6 +26,9 @@ schema:
           unsigned: true
           primary_key: true
           auto_increment: true
+        someBinary:
+          type: binary(16)
+          nullable: false
         name:
           type: varchar(32)
           default: ""

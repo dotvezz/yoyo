@@ -11,6 +11,7 @@ import (
 
 type Person struct { 
 	Id uint32
+	SomeBinary []byte
 	Name string
 	Nickname string
 	FavoriteColor nullable.String
@@ -35,6 +36,7 @@ type Person struct {
 func (e *Person) HasChanged() bool {
 	return e.persisted != nil &&
 		e.Id == e.persisted.Id &&
+		equal(e.SomeBinary, e.persisted.SomeBinary) &&
 		e.Name == e.persisted.Name &&
 		e.Nickname == e.persisted.Nickname &&
 		e.FavoriteColor == e.persisted.FavoriteColor &&
@@ -44,6 +46,7 @@ func (e *Person) HasChanged() bool {
 
 func (e *Person) CopyValuesFrom(input Person) {
     e.Id = input.Id
+    e.SomeBinary = input.SomeBinary
     e.Name = input.Name
     e.Nickname = input.Nickname
     e.FavoriteColor = input.FavoriteColor
@@ -95,7 +98,7 @@ func (es *Persons) Scan(e *Person) (err error) {
 
 // scan wraps the Scan method of sql.Rows, only used when not in a connection to minimize memory usage
 func (es *Persons) scan(e *Person) (err error) {
-	err = es.rs.Scan(&e.Id, &e.Name, &e.Nickname, &e.FavoriteColor, &e.Age, &e.CityId)
+	err = es.rs.Scan(&e.Id, &e.SomeBinary, &e.Name, &e.Nickname, &e.FavoriteColor, &e.Age, &e.CityId)
 	persisted := *e
 	e.persisted = &persisted
 	return err

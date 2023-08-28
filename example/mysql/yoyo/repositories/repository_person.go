@@ -11,11 +11,11 @@ import (
 
 const (
 	insertPerson = "INSERT INTO person" +
-		" (name, nickname, favorite_color, age, fk_city_id) " +
-		" VALUES (?, ?, ?, ?, ?, ?);"
+		" (someBinary, name, nickname, favorite_color, age, fk_city_id) " +
+		" VALUES (?, ?, ?, ?, ?, ?, ?);"
 	updatePerson = "UPDATE person" +
-		" SET id = ?, name = ?, nickname = ?, favorite_color = ?, age = ?, fk_city_id = ? %s;"
-	selectPerson = "SELECT id, name, nickname, favorite_color, age, fk_city_id FROM person %s;"
+		" SET id = ?, someBinary = ?, name = ?, nickname = ?, favorite_color = ?, age = ?, fk_city_id = ? %s;"
+	selectPerson = "SELECT id, someBinary, name, nickname, favorite_color, age, fk_city_id FROM person %s;"
 	deletePerson = "DELETE FROM person %s;"
 )
 
@@ -40,7 +40,7 @@ func (r *PersonRepository) FetchOne(query person.Query) (ent Person, err error) 
 
 	row := stmt.QueryRow(args...)
 
-	err = row.Scan(&ent.Id, &ent.Name, &ent.Nickname, &ent.FavoriteColor, &ent.Age, &ent.CityId)
+	err = row.Scan(&ent.Id, &ent.SomeBinary, &ent.Name, &ent.Nickname, &ent.FavoriteColor, &ent.Age, &ent.CityId)
 
 	persisted := ent
 	ent.persisted = &persisted
@@ -73,7 +73,7 @@ func (r *PersonRepository) Search(query person.Query) (es Persons, err error) {
 
 		for rs.Next() {
 			var ent Person
-			err = rs.Scan(&ent.Id, &ent.Name, &ent.Nickname, &ent.FavoriteColor, &ent.Age, &ent.CityId)
+			err = rs.Scan(&ent.Id, &ent.SomeBinary, &ent.Name, &ent.Nickname, &ent.FavoriteColor, &ent.Age, &ent.CityId)
 			if err != nil {
 				return es, err
 			}
@@ -115,7 +115,7 @@ func (r *PersonRepository) insert(in Person) (e Person, err error) {
 		return e, err
 	}
 
-	res, err = stmt.Exec(in.Id, in.Name, in.Nickname, in.FavoriteColor, in.Age, in.CityId)
+	res, err = stmt.Exec(in.Id, in.SomeBinary, in.Name, in.Nickname, in.FavoriteColor, in.Age, in.CityId)
 	if err != nil {
 		return e, err
 	}
@@ -154,7 +154,7 @@ func (r *PersonRepository) update(in Person) (e Person, err error) {
 		return e, err
 	}
 
-	fields := []interface{}{in.Id, in.Name, in.Nickname, in.FavoriteColor, in.Age, in.CityId}
+	fields := []interface{}{in.Id, in.SomeBinary, in.Name, in.Nickname, in.FavoriteColor, in.Age, in.CityId}
 	_, err = stmt.Exec(append(fields, args...)...)
 	if err != nil {
 		return e, err
