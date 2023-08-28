@@ -2,18 +2,123 @@
 
 package nullable
 
-import ("database/sql")
+import (
+	"database/sql"
+	"time"
+)
 
 // First, re-export the types from database/sql
 
-type Time = sql.NullTime
-type Int16 = sql.NullInt16
-type Int32 = sql.NullInt32
-type Int64 = sql.NullInt64
-type Bool = sql.NullBool
-type Byte = sql.NullByte
-type String = sql.NullString
-type Float64 = sql.NullFloat64
+type Time struct {
+	sql.NullTime
+}
+
+func (n *Time) Set(val time.Time) {
+	n.Valid = true
+	n.Time = val
+}
+
+func (n *Time) SetNull() {
+	n.Valid = false
+	n.Time = time.Time{}
+}
+
+type Int16 struct {
+	sql.NullInt16
+}
+
+func (n *Int16) Set(val int16) {
+	n.Valid = true
+	n.Int16 = val
+}
+
+func (n *Int16) SetNull() {
+	n.Valid = false
+	n.Int16 = 0
+}
+
+type Int32 struct {
+	sql.NullInt32
+}
+
+func (n *Int32) Set(val int32) {
+	n.Valid = true
+	n.Int32 = val
+}
+
+func (n *Int32) SetNull() {
+	n.Valid = false
+	n.Int32 = 0
+}
+
+type Int64 struct {
+	sql.NullInt64
+}
+
+func (n *Int64) Set(val int64) {
+	n.Valid = true
+	n.Int64 = val
+}
+
+func (n *Int64) SetNull() {
+	n.Valid = false
+	n.Int64 = 0
+}
+
+type Bool struct {
+	sql.NullBool
+}
+
+func (n *Bool) Set(val bool) {
+	n.Valid = true
+	n.Bool = val
+}
+
+func (n *Bool) SetNull() {
+	n.Valid = false
+	n.Bool = false
+}
+
+type Byte struct {
+	sql.NullByte
+}
+
+func (n *Byte) Set(val byte) {
+	n.Valid = true
+	n.Byte = val
+}
+
+func (n *Byte) SetNull() {
+	n.Valid = false
+	n.Byte = byte(0)
+}
+
+type String struct {
+	sql.NullString
+}
+
+func (n *String) Set(val string) {
+	n.Valid = true
+	n.String = val
+}
+
+func (n *String) SetNull() {
+	n.Valid = false
+	n.String = ""
+}
+
+type Float64 struct {
+	sql.NullFloat64
+}
+
+func (n *Float64) Set(val float64) {
+	n.Valid = true
+	n.Float64 = val
+}
+
+func (n *Float64) SetNull() {
+	n.Valid = false
+	n.Float64 = 0
+}
 
 // Later, export new types as needed...
-
