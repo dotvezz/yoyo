@@ -11,7 +11,7 @@ import (
 
 type EntityFileParams struct {
 	EntityFields    []string
-	ScanFields      []string
+	Fields          []string
 	Imports         []string
 	ReferenceFields []string
 	EntityName      string
@@ -30,7 +30,7 @@ func NewEntityGenerator(packageName string, db schema.Database, packagePath Find
 		}
 		for _, c := range t.Columns {
 			ps.EntityFields = append(ps.EntityFields, fmt.Sprintf("%s %s", c.ExportedGoName(), c.GoTypeString()))
-			ps.ScanFields = append(ps.ScanFields, fmt.Sprintf("&e.%s", c.ExportedGoName()))
+			ps.Fields = append(ps.Fields, c.ExportedGoName())
 			if imp := c.RequiredImport(nullPackagePath); imp != "" {
 				ps.Imports = append(ps.Imports, imp)
 			}
@@ -43,7 +43,7 @@ func NewEntityGenerator(packageName string, db schema.Database, packagePath Find
 					c, _ := ft.GetColumn(cn)
 
 					goName := fmt.Sprintf("%s%s", ft.ExportedGoName(), c.ExportedGoName())
-					ps.ScanFields = append(ps.ScanFields, fmt.Sprintf("&e.%s", goName))
+					ps.Fields = append(ps.Fields, goName)
 					ps.ReferenceFields = append(ps.ReferenceFields, fmt.Sprintf("%s %s", goName, c.GoTypeString()))
 				}
 			}
@@ -53,7 +53,7 @@ func NewEntityGenerator(packageName string, db schema.Database, packagePath Find
 			for _, r := range t2.References {
 				if r.HasMany && r.TableName == t.Name {
 					for _, c := range t2.PKColumns() {
-						ps.ScanFields = append(ps.ScanFields, fmt.Sprintf("&e.%s", t2.ExportedGoName()+c.ExportedGoName()))
+						ps.Fields = append(ps.Fields, t2.ExportedGoName()+c.ExportedGoName())
 						ps.ReferenceFields = append(ps.ReferenceFields, fmt.Sprintf("%s %s", t2.ExportedGoName()+c.ExportedGoName(), c.GoTypeString()))
 					}
 				}

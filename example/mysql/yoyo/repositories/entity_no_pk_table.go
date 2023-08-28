@@ -15,6 +15,26 @@ type NoPkTable struct {
 	persisted *NoPkTable
 }
 
+// HasChanged is intended to help understand if the entity's current values are represented in the database.
+// A few examples are provided below:
+//   - For a NoPkTable which was created outside of a NoPkTableRepository, HasChanged will return false
+//     even if it was used as the input for NoPkTableRepository.Save.
+//   - For an NoPkTable returned from NoPkTableRepository.Save, HasChanged will return true. However,
+//     changing the value of any field on that NoPkTable will cause its value to diverge from the last-known
+//     persisted value. In that case, its HasChanged method will return false.
+//
+// The method only tracks changes made to the NoPkTable, and does NOT track changes on the database itself.
+func (e *NoPkTable) HasChanged() bool {
+	return e.persisted != nil &&
+		e.Col == e.persisted.Col &&
+		e.Col2 == e.persisted.Col2
+}
+
+func (e *NoPkTable) CopyValuesFrom(input NoPkTable) {
+    e.Col = input.Col
+    e.Col2 = input.Col2
+}
+
 type NoPkTables struct {
 	// If we're not in a transaction, then NoPkTable saves memory by wrapping a *sql.Rows to scan from the connection
 	// buffer on-demand.

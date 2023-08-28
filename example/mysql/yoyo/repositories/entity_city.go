@@ -15,6 +15,26 @@ type City struct {
 	persisted *City
 }
 
+// HasChanged is intended to help understand if the entity's current values are represented in the database.
+// A few examples are provided below:
+//   - For a City which was created outside of a CityRepository, HasChanged will return false
+//     even if it was used as the input for CityRepository.Save.
+//   - For an City returned from CityRepository.Save, HasChanged will return true. However,
+//     changing the value of any field on that City will cause its value to diverge from the last-known
+//     persisted value. In that case, its HasChanged method will return false.
+//
+// The method only tracks changes made to the City, and does NOT track changes on the database itself.
+func (e *City) HasChanged() bool {
+	return e.persisted != nil &&
+		e.Id == e.persisted.Id &&
+		e.Name == e.persisted.Name
+}
+
+func (e *City) CopyValuesFrom(input City) {
+    e.Id = input.Id
+    e.Name = input.Name
+}
+
 type Citys struct {
 	// If we're not in a transaction, then City saves memory by wrapping a *sql.Rows to scan from the connection
 	// buffer on-demand.

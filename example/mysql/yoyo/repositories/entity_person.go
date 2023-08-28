@@ -18,9 +18,37 @@ type Person struct {
 
 	// Reference Fields
 	CityId uint32
-	
+
 	// For tracking persistence
 	persisted *Person
+}
+
+// HasChanged is intended to help understand if the entity's current values are represented in the database.
+// A few examples are provided below:
+//   - For a Person which was created outside of a PersonRepository, HasChanged will return false
+//     even if it was used as the input for PersonRepository.Save.
+//   - For an Person returned from PersonRepository.Save, HasChanged will return true. However,
+//     changing the value of any field on that Person will cause its value to diverge from the last-known
+//     persisted value. In that case, its HasChanged method will return false.
+//
+// The method only tracks changes made to the Person, and does NOT track changes on the database itself.
+func (e *Person) HasChanged() bool {
+	return e.persisted != nil &&
+		e.Id == e.persisted.Id &&
+		e.Name == e.persisted.Name &&
+		e.Nickname == e.persisted.Nickname &&
+		e.FavoriteColor == e.persisted.FavoriteColor &&
+		e.Age == e.persisted.Age &&
+		e.CityId == e.persisted.CityId
+}
+
+func (e *Person) CopyValuesFrom(input Person) {
+    e.Id = input.Id
+    e.Name = input.Name
+    e.Nickname = input.Nickname
+    e.FavoriteColor = input.FavoriteColor
+    e.Age = input.Age
+    e.CityId = input.CityId
 }
 
 type Persons struct {
